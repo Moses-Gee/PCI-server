@@ -1,0 +1,30 @@
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from uuid import UUID
+from datetime import datetime
+
+
+class NetworkBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    coordinates: List[float] = Field(..., min_items=2, max_items=2)
+
+
+class NetworkCreate(NetworkBase):
+    pass
+
+
+class NetworkUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    coordinates: Optional[List[float]] = None
+
+
+class NetworkResponse(NetworkBase):
+    id: UUID
+    total_sections: int
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True

@@ -1,0 +1,67 @@
+# ========== Python ==========
+# Bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.env/
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# ========== Environment variables ==========
+.env
+*.env
+!.env.example          # Keep a template if you have one
+
+# ========== IDE / Editor ==========
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+.project
+.classpath
+.settings/
+
+# ========== Database & Migrations ==========
+# SQLite (if used)
+*.db
+*.sqlite
+*.sqlite3
+
+# Alembic (keep version files, but ignore temporary/backup files)
+alembic/versions/*.pyc
+alembic/versions/*.pyo
+# If you store generated SQL files or logs, ignore them:
+alembic/versions/*.sql
+
+# ========== Uploads & Generated Files ==========
+uploads/
+reports/
+*.log
+logs/
+*.tmp
+*.temp
+
+# ========== OS specific ==========
+Thumbs.db
+.DS_Store
+*.bak
+*.orig
+
+# ========== Docker (optional) ==========
+# If you use Docker, you may not want to commit local volumes
+docker-compose.override.yml
+*.pid
