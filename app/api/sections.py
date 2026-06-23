@@ -3,11 +3,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
 from uuid import UUID
-
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
+from app.models.sample_unit import SampleUnit
 from app.models.section import Section
 from app.models.network import Network
-from app.schemas.section import SectionCreate, SectionUpdate, SectionResponse
+from app.schemas.section import (
+    SectionCreate,
+    SectionUpdate,
+    SectionResponse,
+    SectionWithSUsResponse,
+)
 
 router = APIRouter(prefix="/sections", tags=["Sections"])
 
@@ -16,6 +22,20 @@ router = APIRouter(prefix="/sections", tags=["Sections"])
 async def get_all_sections(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Section).order_by(Section.created_at.desc()))
     return result.scalars().all()
+
+
+@router.get("/{section_id}", response_model=SectionWithSUsResponse)
+async def get_section(section_id: UUID, db: AsyncSession = Depends(get_db)):
+    stmt = (
+        select(Section)
+        .where(Section.id == section_id)
+        .options(selectinload(Section.sample_units).selectinload(SampleUnit.detections))
+    )
+    result = await db.execute(stmt)
+    section = result.scalar_one_or_none()
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found")
+    return section
 
 
 @router.get("/network/{network_id}", response_model=List[SectionResponse])
@@ -38,7 +58,7 @@ async def create_section(
     if not network:
         raise HTTPException(status_code=404, detail="Network not found")
     # Calculate area (m²) = length (km) * width (m) * 1000
-    area = section.length * section.width * 1000
+    area = section.length * section.width
     db_section = Section(**section.dict(), network_id=network_id, area=area)
     db.add(db_section)
     # Increment total sections on network

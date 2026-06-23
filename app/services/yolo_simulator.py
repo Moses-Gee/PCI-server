@@ -26,7 +26,7 @@ async def simulate_yolo_processing(sample_unit_id: UUID, db: AsyncSession):
         "Transverse Crack",
         "Rutting",
     ]
-    severities = ["L", "M", "H"]
+    severities = ["low", "medium", "high"]
     num = random.randint(1, 3)
     for _ in range(num):
         det = DetectionResult(

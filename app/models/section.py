@@ -22,6 +22,8 @@ class Section(BaseModel):
     pixel_to_mm_factor = Column(Float, nullable=False)
     area = Column(Float, nullable=False)  # m²
 
+    sample_unit_count = Column(Integer, server_default='0', default=0)
+
     network = relationship("Network", back_populates="sections")
     sample_units = relationship(
         "SampleUnit", back_populates="section", cascade="all, delete-orphan"

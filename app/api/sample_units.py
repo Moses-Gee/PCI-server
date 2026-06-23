@@ -8,6 +8,7 @@ from uuid import UUID
 import os
 import shutil
 from datetime import datetime
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.config import settings
@@ -20,6 +21,9 @@ from app.schemas.sample_unit import (
 )
 from app.services.yolo_simulator import simulate_yolo_processing
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 router = APIRouter(prefix="/sample-units", tags=["Sample Units"])
 
 
@@ -27,9 +31,13 @@ router = APIRouter(prefix="/sample-units", tags=["Sample Units"])
 async def get_sample_units_by_section(
     section_id: UUID, db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(
-        select(SampleUnit).where(SampleUnit.section_id == section_id)
+    stmt = (
+        select(SampleUnit)
+        .where(SampleUnit.section_id == section_id)
+        .options(selectinload(SampleUnit.detections))   # Eager load detections
+        .order_by(SampleUnit.created_at.desc())
     )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 
@@ -38,9 +46,10 @@ async def get_sample_units_by_section(
 )
 async def create_sample_unit(
     section_id: UUID = Form(...),
+    # sample_unit: SampleUnitCreate,
     name: str = Form(...),
-    area: float = Form(None),
-    is_random: bool = Form(True),
+    # area: float = Form(None),
+    # is_random: bool = Form(True),
     distress_type: str = Form(None),
     severity: str = Form(None),
     pothole_depth: float = Form(None),
@@ -49,6 +58,8 @@ async def create_sample_unit(
     image_file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
+    logging.info(f"section_id: {section_id}")
+    logging.info(f"name: {name}")
     # Verify section exists
     section = await db.get(Section, section_id)
     if not section:
@@ -67,8 +78,8 @@ async def create_sample_unit(
     db_sample = SampleUnit(
         section_id=section_id,
         name=name,
-        area=area,
-        is_random=is_random,
+        # area=area,
+        # is_random=is_random,
         distress_type=distress_type,
         severity=severity,
         pothole_depth=pothole_depth,
@@ -78,7 +89,9 @@ async def create_sample_unit(
     )
     db.add(db_sample)
     await db.commit()
-    await db.refresh(db_sample)
+    # await db.refresh(db_sample)
+    await db.refresh(db_sample, attribute_names=["detections"])
+    section.sample_unit_count += 1
 
     # Simulate YOLO processing (background task)
     # We'll call a service that updates detections asynchronously
@@ -98,7 +111,7 @@ async def update_sample_unit(
     sample = await db.get(SampleUnit, sample_unit_id)
     if not sample:
         raise HTTPException(status_code=404, detail="Sample unit not found")
-    for key, value in update.dict(exclude_unset=True).items():
+    for key, value in update.model_dump(exclude_unset=True).items():
         setattr(sample, key, value)
     await db.commit()
     await db.refresh(sample)

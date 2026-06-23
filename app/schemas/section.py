@@ -3,6 +3,8 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 
+from app.schemas.sample_unit import SampleUnitResponse
+
 
 class SectionBase(BaseModel):
     name: str
@@ -40,3 +42,7 @@ class SectionResponse(SectionBase):
 
     class Config:
         from_attributes = True
+
+
+class SectionWithSUsResponse(SectionResponse):
+    sample_units: List[SampleUnitResponse] = []

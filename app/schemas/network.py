@@ -3,6 +3,8 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 
+from app.schemas.section import SectionResponse
+
 
 class NetworkBase(BaseModel):
     name: str
@@ -25,6 +27,9 @@ class NetworkResponse(NetworkBase):
     total_sections: int
     created_at: datetime
     updated_at: Optional[datetime]
+    sections: List[SectionResponse]
 
     class Config:
         from_attributes = True
+class NetworkWithSectionsResponse(NetworkResponse):
+    sections: List[SectionResponse] = []

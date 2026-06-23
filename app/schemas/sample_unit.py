@@ -52,3 +52,6 @@ class SampleUnitResponse(SampleUnitBase):
 
     class Config:
         from_attributes = True
+
+
+        
