@@ -22,23 +22,26 @@ from app.schemas.sample_unit import (
 from app.services.yolo_simulator import simulate_yolo_processing
 
 import logging
+
 logging.basicConfig(level=logging.INFO)
+
+from app.services.pci_utilities import normalizeClass
 
 router = APIRouter(prefix="/sample-units", tags=["Sample Units"])
 
 
-@router.get("/section/{section_id}", response_model=List[SampleUnitResponse])
-async def get_sample_units_by_section(
-    section_id: UUID, db: AsyncSession = Depends(get_db)
-):
-    stmt = (
-        select(SampleUnit)
-        .where(SampleUnit.section_id == section_id)
-        .options(selectinload(SampleUnit.detections))   # Eager load detections
-        .order_by(SampleUnit.created_at.desc())
-    )
-    result = await db.execute(stmt)
-    return result.scalars().all()
+# @router.get("/section/{section_id}", response_model=List[SampleUnitResponse])
+# async def get_sample_units_by_section(
+#     section_id: UUID, db: AsyncSession = Depends(get_db)
+# ):
+#     stmt = (
+#         select(SampleUnit)
+#         .where(SampleUnit.section_id == section_id)
+#         .options(selectinload(SampleUnit.detections))   # Eager load detections
+#         .order_by(SampleUnit.created_at.desc())
+#     )
+#     result = await db.execute(stmt)
+#     return result.scalars().all()
 
 
 @router.post(
@@ -58,8 +61,19 @@ async def create_sample_unit(
     image_file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
-    logging.info(f"section_id: {section_id}")
-    logging.info(f"name: {name}")
+
+    if image_file is None and distress_type is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Either Select an image for model prediction or manually enter distress type and severity ",
+        )
+    if distress_type and severity is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Please select a severity level of the distress",
+        )
+    # logging.info(f"section_id: {section_id}")
+    # logging.info(f"name: {name}")
     # Verify section exists
     section = await db.get(Section, section_id)
     if not section:
@@ -74,6 +88,7 @@ async def create_sample_unit(
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(image_file.file, buffer)
 
+    normalized_class = normalizeClass(distress_type)
     # Create sample unit
     db_sample = SampleUnit(
         section_id=section_id,
@@ -86,6 +101,7 @@ async def create_sample_unit(
         note=note,
         pixel_to_mm_factor=pixel_to_mm_factor or section.pixel_to_mm_factor,
         original_image=filepath,
+        normalized_class=normalized_class,
     )
     db.add(db_sample)
     await db.commit()

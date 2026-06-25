@@ -6,7 +6,11 @@ import os
 from app.core.config import settings
 from app.api import networks, sections, sample_units, pci, reports
 
+from app.services.pci import PCICalculator
+
 app = FastAPI(title="Pavement Management API", version="1.0.0")
+
+pci_calculator = PCICalculator.get_instance()
 
 # CORS
 app.add_middleware(

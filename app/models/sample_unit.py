@@ -27,6 +27,7 @@ class SampleUnit(BaseModel):
     severity = Column(String, nullable=True)
     pothole_depth = Column(Float, nullable=True)
     note = Column(String, nullable=True)
+    normalized_class = Column(String, nullable=True)
 
     section = relationship("Section", back_populates="sample_units")
     detections = relationship(

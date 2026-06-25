@@ -10,6 +10,7 @@ class DetectionResultBase(BaseModel):
     quantity: float
     confidence: Optional[float] = None
     metrics: Optional[Dict[str, float]] = None
+    normalized_class: str
 
 
 class DetectionResultCreate(DetectionResultBase):

@@ -75,7 +75,7 @@ async def update_network(
     network = await db.get(Network, network_id)
     if not network:
         raise HTTPException(status_code=404, detail="Network not found")
-    for key, value in update.dict(exclude_unset=True).items():
+    for key, value in update.model_dump(exclude_unset=True).items():
         setattr(network, key, value)
     await db.commit()
     await db.refresh(network)

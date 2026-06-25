@@ -2,7 +2,9 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Any
 from uuid import UUID
 from datetime import datetime
-from app.schemas.detection_result import DetectionResultResponse as DetectionResultSchema  # avoid name clash
+from app.schemas.detection_result import (
+    DetectionResultResponse as DetectionResultSchema,
+)  # avoid name clash
 
 
 class DistressInput(BaseModel):
@@ -47,11 +49,9 @@ class SampleUnitResponse(SampleUnitBase):
     original_image: Optional[str] = None
     predicted_image: Optional[str] = None
     detections: List[DetectionResultSchema] = []
+    normalized_class: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime]
 
     class Config:
         from_attributes = True
-
-
-        
