@@ -1,3 +1,4 @@
+from .user import User
 from .network import Network
 from .section import Section
 from .sample_unit import SampleUnit

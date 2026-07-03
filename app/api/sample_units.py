@@ -125,6 +125,7 @@ async def create_sample_unit(
         note=note,
         pixel_to_mm_factor=pixel_to_mm_factor or section.pixel_to_mm_factor,
         normalized_class=normalized_class,
+        inference_status="pending" if has_file else "done",
     )
     db.add(db_sample)
     section.sample_unit_count += 1
@@ -188,7 +189,8 @@ async def update_sample_unit(
 
     # 2. Build update dict from provided fields
     update_data = {}
-    update_data["inference_status"] = "pending"
+    if image_file and image_file.filename: 
+        update_data["inference_status"] = "pending"
     if name is not None:
         update_data["name"] = name
     if distress_type is not None:

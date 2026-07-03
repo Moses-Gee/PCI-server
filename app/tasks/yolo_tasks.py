@@ -10,6 +10,7 @@ from app.core.inference_events import (
     publish_failed,
     publish_inference_event,
 )
+from app.services.yolo_seg.seg_model import infer_image_seg_model
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def _mark_failed(sample_unit_id: str):
     soft_time_limit=150,  # graceful signal at 2.5 min
     name="tasks.run_yolo_inference",
 )
-def run_yolo_inference(self, sample_unit_id: str):
+def run_yolo_inference(self, sample_unit_id: str, model_to_use: str = "seg"):
     """
     Celery runs in a separate process — must use a sync DB session,
     not the async one FastAPI uses.
@@ -93,11 +94,18 @@ def run_yolo_inference(self, sample_unit_id: str):
                 publish_processing(sample_unit_id, step, detail)
 
             # Run YOLO (blocking is fine here — we're in a worker process)
-            detections, records, annotated = infer_image_bbox_model(
-                image,
-                sample.pixel_to_mm_factor,
-                on_progress=on_progress,
-            )
+            if model_to_use == "seg":
+                detections, records, annotated = infer_image_seg_model(
+                    image,
+                    sample.pixel_to_mm_factor,
+                    on_progress=on_progress,
+                )
+            else:
+                detections, records, annotated = infer_image_bbox_model(
+                    image,
+                    sample.pixel_to_mm_factor,
+                    on_progress=on_progress,
+                )
 
             if not records:
                 print(detections)
@@ -145,6 +153,11 @@ def run_yolo_inference(self, sample_unit_id: str):
                         "length": record.length_mm,
                         "area": record.area_mm2,
                         "perimeter": 0.0,
+                        "crack_category_confidence": record.crack_category_confidence,
+                        "bbox_dim": record.bbox_dim,
+                        "pothole_equiv_diameter_mm": record.pothole_equiv_diameter_mm,
+                        "pothole_depth_est_mm": record.pothole_depth_est_mm,
+                        "pothole_count": record.pothole_count,
                     },
                 )
                 db.add(det)

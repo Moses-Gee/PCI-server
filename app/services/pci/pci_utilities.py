@@ -1,5 +1,10 @@
 normalized_classes = {
-    "alligator": ["alligator crack", "Alligator crack", "alligator cracking"],
+    "alligator": [
+        "alligator crack",
+        "Alligator crack",
+        "alligator cracking",
+        "alligator",
+    ],
     "linear": [
         "Longitudinal Crack",
         "Transverse Crack",
