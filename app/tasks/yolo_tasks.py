@@ -30,6 +30,44 @@ def _mark_failed(sample_unit_id: str):
         logger.exception(f"Could not mark {sample_unit_id} as failed")
 
 
+def _build_metrics_payload(record) -> dict:
+    """
+    Build the `metrics` JSON payload stored in DetectionResult.
+    Works for DistressRecord from EITHER bbox_model or seg_model because
+    both dataclasses now share the same field names.
+    """
+    return {
+        # geometry
+        "avg_width": record.width_mm,
+        "length": record.length_mm,
+        "area": record.area_mm2,
+        "perimeter": record.perimeter_mm,
+        "bbox_area_mm2": record.bbox_area_mm2,
+        # topology
+        "branch_density": record.branch_density,
+        "loop_count": record.loop_count,
+        "fill_ratio": record.fill_ratio,
+        "shape_complexity": record.shape_complexity,
+        "orientation_deg": record.orientation_deg,
+        "aspect_ratio": record.aspect_ratio,
+        "texture_cv": record.texture_cv,
+        # crack classification
+        "crack_category_confidence": record.crack_category_confidence,
+        # pothole
+        "pothole_equiv_diameter_mm": record.pothole_equiv_diameter_mm,
+        "pothole_depth_est_mm": record.pothole_depth_est_mm,
+        "pothole_count": record.pothole_count,
+        # bbox
+        "bbox_dim": record.bbox_dim,
+        # ASTM
+        "astm_quantity": record.astm_quantity,
+        "astm_unit": record.astm_unit,
+        # full dicts
+        "severity_metrics": record.severity_metrics,
+        "skel_metrics": record.metrics,
+    }
+
+
 @celery_app.task(
     bind=True,
     max_retries=3,
@@ -37,7 +75,7 @@ def _mark_failed(sample_unit_id: str):
     soft_time_limit=150,  # graceful signal at 2.5 min
     name="tasks.run_yolo_inference",
 )
-def run_yolo_inference(self, sample_unit_id: str, model_to_use: str = "seg"):
+def run_yolo_inference(self, sample_unit_id: str, model_to_use: str):
     """
     Celery runs in a separate process — must use a sync DB session,
     not the async one FastAPI uses.
@@ -50,6 +88,7 @@ def run_yolo_inference(self, sample_unit_id: str, model_to_use: str = "seg"):
     from app.services.yolo_bbox.bbox_model import infer_image_bbox_model
     import cv2
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
     from app.models.image import Image
     import requests
     import numpy as np
@@ -58,7 +97,14 @@ def run_yolo_inference(self, sample_unit_id: str, model_to_use: str = "seg"):
 
     try:
         with SyncSessionLocal() as db:
-            sample = db.get(SampleUnit, sample_unit_id)
+            stmt = (
+                select(SampleUnit)
+                .where(SampleUnit.id == sample_unit_id)
+                .options(selectinload(SampleUnit.section))  # 👈 this loads the section
+            )
+            result = db.execute(stmt)
+            sample = result.scalar_one_or_none()
+
             if not sample:
                 return {"status": "error", "detail": "Sample unit not found"}
 
@@ -94,17 +140,18 @@ def run_yolo_inference(self, sample_unit_id: str, model_to_use: str = "seg"):
                 publish_processing(sample_unit_id, step, detail)
 
             # Run YOLO (blocking is fine here — we're in a worker process)
-            if model_to_use == "seg":
+            if model_to_use == "Segmentation":
                 detections, records, annotated = infer_image_seg_model(
-                    image,
-                    sample.pixel_to_mm_factor,
+                    image=image,
+                    px_per_mm=sample.pixel_to_mm_factor,
                     on_progress=on_progress,
                 )
             else:
                 detections, records, annotated = infer_image_bbox_model(
-                    image,
-                    sample.pixel_to_mm_factor,
+                    image=image,
+                    px_per_mm=sample.pixel_to_mm_factor,
                     on_progress=on_progress,
+                    sample_unit_area_mm2=sample.section.area * 1_000_000,
                 )
 
             if not records:
@@ -145,20 +192,11 @@ def run_yolo_inference(self, sample_unit_id: str, model_to_use: str = "seg"):
                     sample_unit_id=sample.id,
                     distress_type=record.class_name,
                     severity=record.severity,
+                    severity_label=record.severity_label,
                     quantity=class_counts[record.class_name],
                     confidence=record.confidence,
                     normalized_class=normalizeClass(record.class_name),
-                    metrics={
-                        "avg_width": record.width_mm,
-                        "length": record.length_mm,
-                        "area": record.area_mm2,
-                        "perimeter": 0.0,
-                        "crack_category_confidence": record.crack_category_confidence,
-                        "bbox_dim": record.bbox_dim,
-                        "pothole_equiv_diameter_mm": record.pothole_equiv_diameter_mm,
-                        "pothole_depth_est_mm": record.pothole_depth_est_mm,
-                        "pothole_count": record.pothole_count,
-                    },
+                    metrics=_build_metrics_payload(record),
                 )
                 db.add(det)
 

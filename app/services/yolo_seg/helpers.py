@@ -6,7 +6,13 @@ from typing import Dict, List, Optional, Tuple
 import cv2
 import numpy as np
 
-from app.services.yolo_seg.config_seg import _ALIG_BRANCH_HIGH, _ALIG_BRANCH_LOW, _PH_SEVERITY_TABLE, LINEAR_LOW_MAX_MM, LINEAR_MED_MAX_MM
+from app.services.yolo_seg.config_seg import (
+    _ALIG_BRANCH_HIGH,
+    _ALIG_BRANCH_LOW,
+    _PH_SEVERITY_TABLE,
+    LINEAR_LOW_MAX_MM,
+    LINEAR_MED_MAX_MM,
+)
 
 try:
     from skimage.filters import sato
@@ -49,7 +55,6 @@ class QuantifyResult:
     fill_ratio: Optional[float] = None
     orientation_deg: Optional[float] = None
     crack_category_confidence: Optional[float] = None
-
 
     # ── pothole-specific (None for crack) ────────────────────────────────────
     pothole_equiv_diameter_mm: Optional[float] = None  # √(4·A/π)

@@ -8,6 +8,7 @@ from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import selectinload
 
+from app.api import updateSectionCalcStatus
 from app.core.cloudinary_client import upload_image_to_cloudinary
 from app.core.database import get_db
 from app.models.detection_result import DetectionResult
@@ -31,20 +32,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 router = APIRouter(prefix="/sample-units", tags=["Sample Units"])
-
-
-# @router.get("/section/{section_id}", response_model=List[SampleUnitResponse])
-# async def get_sample_units_by_section(
-#     section_id: UUID, db: AsyncSession = Depends(get_db)
-# ):
-#     stmt = (
-#         select(SampleUnit)
-#         .where(SampleUnit.section_id == section_id)
-#         .options(selectinload(SampleUnit.detections))   # Eager load detections
-#         .order_by(SampleUnit.created_at.desc())
-#     )
-#     result = await db.execute(stmt)
-#     return result.scalars().all()
 
 
 def validate(image_file: UploadFile | None, distress_type, severity):
@@ -89,6 +76,7 @@ async def create_sample_unit(
     note: Optional[str] = Form(None),
     pixel_to_mm_factor: Optional[float] = Form(None),
     image_file: Optional[UploadFile] = File(None),
+    model_to_use: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     distress_type, severity, has_file, has_manual = validate(
@@ -135,7 +123,10 @@ async def create_sample_unit(
     # ── Save image record ─────────────────────────────────────────────────────
     if has_file and cloudinary_result:
         await save_image_record(db, db_sample.id, cloudinary_result, is_original=True)
-        run_yolo_inference.delay(str(db_sample.id))
+        run_yolo_inference.delay(str(db_sample.id), str(model_to_use))
+
+    # Set is calculated to false to allow re-calculation of pci values as sample unit is updated
+    await updateSectionCalcStatus(db=db, section_id=db_sample.section_id)
 
     # ✅ Re‑fetch the sample unit with detections eagerly loaded
     stmt = (
@@ -152,20 +143,6 @@ async def create_sample_unit(
     return db_sample
 
 
-# @router.patch("/{sample_unit_id}", response_model=SampleUnitResponse)
-# async def update_sample_unit(
-#     sample_unit_id: UUID, update: SampleUnitUpdate, db: AsyncSession = Depends(get_db)
-# ):
-#     sample = await db.get(SampleUnit, sample_unit_id)
-#     if not sample:
-#         raise HTTPException(status_code=404, detail="Sample unit not found")
-#     for key, value in update.model_dump(exclude_unset=True).items():
-#         setattr(sample, key, value)
-#     await db.commit()
-#     await db.refresh(sample)
-#     return sample
-
-
 @router.patch("/{sample_unit_id}", response_model=SampleUnitResponse)
 async def update_sample_unit(
     sample_unit_id: UUID,
@@ -175,6 +152,7 @@ async def update_sample_unit(
     pothole_depth: Optional[float] = Form(None),
     note: Optional[str] = Form(None),
     pixel_to_mm_factor: Optional[float] = Form(None),
+    model_to_use: Optional[str] = Form(None),
     image_file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -189,8 +167,6 @@ async def update_sample_unit(
 
     # 2. Build update dict from provided fields
     update_data = {}
-    if image_file and image_file.filename: 
-        update_data["inference_status"] = "pending"
     if name is not None:
         update_data["name"] = name
     if distress_type is not None:
@@ -205,6 +181,10 @@ async def update_sample_unit(
         update_data["note"] = note
     if pixel_to_mm_factor is not None:
         update_data["pixel_to_mm_factor"] = float(pixel_to_mm_factor)
+    if image_file and image_file.filename:
+        update_data["inference_status"] = "pending"
+        update_data["distress_type"] = None
+        update_data["severity"] = None
 
     # Apply updates
     print(update_data)
@@ -233,11 +213,14 @@ async def update_sample_unit(
         except RuntimeError as e:
             raise HTTPException(status_code=502, detail=str(e))
         # Run inference on the new image (simulated YOLO)
-        run_yolo_inference.delay(str(sample.id))
+        run_yolo_inference.delay(str(sample.id), str(model_to_use))
 
     # 4. Commit changes
     await db.commit()
     await db.refresh(sample)  # refresh scalar fields
+
+    # Set is_calculated to false to allow re-calculation of pci values as sample unit is added
+    await updateSectionCalcStatus(db=db, section_id=sample.section_id)
 
     # 5. Re-fetch with detections eager‑loaded to avoid greenlet errors
     stmt = (
@@ -265,4 +248,6 @@ async def delete_sample_unit(sample_unit_id: UUID, db: AsyncSession = Depends(ge
     section = await db.get(Section, sample.section_id)
     if section.sample_unit_count > 0:
         section.sample_unit_count -= 1
+    if section and section.is_calculated:
+        setattr(section, "is_calculated", False)
     await db.commit()

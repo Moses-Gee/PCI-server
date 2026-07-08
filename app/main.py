@@ -1,7 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api import auth, networks, sections, sample_units, pci, reports, ws
+from app.api import (
+    analytics,
+    auth,
+    networks,
+    sections,
+    sample_units,
+    detection_result,
+    pci,
+    ws,
+)
 
 # from app.services.pci.pci_calculator import PCICalculator
 
@@ -21,11 +30,12 @@ app.add_middleware(
 # Routers
 app.include_router(ws.router)
 app.include_router(auth.router)
+app.include_router(analytics.router)
 app.include_router(networks.router)
 app.include_router(sections.router)
 app.include_router(sample_units.router)
+app.include_router(detection_result.router)
 app.include_router(pci.router)
-app.include_router(reports.router)
 
 # Serve uploaded images
 # os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, UUID, ForeignKey, JSON
+from sqlalchemy import Column, String, Float, Integer, UUID, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 import uuid
@@ -23,6 +23,10 @@ class Section(BaseModel):
     area = Column(Float, nullable=False)  # m²
 
     sample_unit_count = Column(Integer, server_default='0', default=0)
+
+    latest_pci = Column(Float, nullable=True)
+    latest_rating = Column(String, nullable=True)
+    is_calculated = Column(Boolean, default=False)
 
     network = relationship("Network", back_populates="sections")
     sample_units = relationship(

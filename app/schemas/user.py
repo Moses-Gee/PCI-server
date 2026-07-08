@@ -14,7 +14,8 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
 class LoginRequest(BaseModel):

@@ -27,6 +27,53 @@ from app.services.pci.pci_utilities import (
 )
 import numpy as np
 
+
+# normalized_classes = {
+#     "alligator": [
+#         "alligator crack",
+#         "Alligator crack",
+#         "alligator cracking",
+#         "alligator",
+#     ],
+#     "linear": [
+#         "Longitudinal Crack",
+#         "Transverse Crack",
+#         "longitudinal cracking",
+#         "transverse cracking",
+#         "Longitudinal",
+#         "Transverse",
+#     ],
+#     "pothole": ["Pothole"],
+#     "edge_crack": ["edge cracking", "edge crack"],
+#     "patching": ["patching"],
+#     "rutting": ["rutting"],
+# }
+
+# VALID_DISTRESS_TYPES = list(normalized_classes.keys())
+
+# # VALID_DISTRESS_TYPES = {"alligator", "long_trans", "pothole"}
+# VALID_SEVERITIES = ["low", "medium", "high"]
+
+# PCI_RATING_TABLE = [
+#     (86, 100, "Good"),
+#     (71, 85, "Satisfactory"),
+#     (56, 70, "Fair"),
+#     (41, 55, "Poor"),
+#     (26, 40, "Very Poor"),
+#     (11, 25, "Serious"),
+#     (0, 10, "Failed"),
+# ]
+
+# def clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
+#     return max(lo, min(hi, value))
+
+
+# def pci_condition(pci: float) -> str:
+#     for lo, hi, label in PCI_RATING_TABLE:
+#         if lo <= pci <= hi:
+#             return label
+#     return "Unknown"
+
 _DEFAULT_DISTRESS_MODELS_PATH = os.path.join(
     os.getcwd(), "app", "fitted_polynomial", "distress_models.json"
 )
@@ -47,6 +94,7 @@ class PCICalculator:
     via load_models). After that every call is pure arithmetic -- no I/O,
     no fitting, no imports of numpy beyond what is already loaded.
     """
+
     _singleton = None  # optional module-level cache (see get_instance())
 
     def __init__(
@@ -164,9 +212,11 @@ class PCICalculator:
         hdv = dvs[0]
         m = min(10, 1 + (9 / 98) * (100 - hdv))
         num_to_keep = math.ceil(m)
+        print("num_to_keep", num_to_keep)
 
         # Truncate to m deducts (last one scaled by fractional part of m)
         working = dvs[:num_to_keep]
+        print("working", working)
         frac = m - math.floor(m)
         if frac > 0 and len(working) == num_to_keep and num_to_keep > 1:
             working[-1] = working[-1] * frac
@@ -275,7 +325,7 @@ class PCICalculator:
 if __name__ == "__main__":
     calc = PCICalculator.get_instance()
 
-    print("=== Single deduct value lookups ===")
+    # print("=== Single deduct value lookups ===")
     examples = [
         ("alligator", "low", 2.0),
         ("alligator", "medium", 25.0),
@@ -287,23 +337,48 @@ if __name__ == "__main__":
         ("pothole", "medium", 0.5),
         ("pothole", "high", 3.0),
     ]
-    for dt, sev, dens in examples:
-        dv = calc.get_deduct_value(dt, sev, dens)
-        print(f"  {dt:10s}  sev={sev}  density={dens:>6}%  ->  DV = {dv:.2f}")
+    # for dt, sev, dens in examples:
+    #     dv = calc.get_deduct_value(dt, sev, dens)
+    #     print(f"  {dt:10s}  sev={sev}  density={dens:>6}%  ->  DV = {dv:.2f}")
 
     print("\n=== Full PCI calculation ===")
     result = calc.compute_pci(
         [
-            {"distress": "alligator", "severity": "high", "density": 15.0},
-            {"distress": "linear", "severity": "medium", "density": 8.0},
-            {"distress": "pothole", "severity": "low", "density": 0.2},
+            {
+                "distress_type": "pothole",
+                "severity": "low",
+                "count": 12,
+                "density": 11.1483,
+                "deduct_value": 100.0,
+            },
+            {
+                "distress_type": "pothole",
+                "severity": "medium",
+                "count": 2,
+                "density": 1.858,
+                "deduct_value": 100.0,
+            },
+            {
+                "distress_type": "linear",
+                "severity": "low",
+                "count": 1,
+                "density": 0.929,
+                "deduct_value": 1.81,
+            },
+            {
+                "distress_type": "alligator",
+                "severity": "high",
+                "count": 1,
+                "density": 0.929,
+                "deduct_value": 29.85,
+            },
         ]
     )
-    print(f"  PCI       : {result['pci']}")
-    print(f"  Condition : {result['condition']}")
-    print(f"  CDV       : {result['cdv']}")
-    print(f"  TDV       : {result['tdv']}")
-    print(f"  DV list   : {result['deduct_values']}")
-    print(f"  Details   :")
-    for obs in result["observations"]:
-        print(f"    {obs}")
+    print(f"  PCI       : {result['final_pci']}")
+    print(f"  Condition : {result['condition_rating']}")
+    # print(f"  CDV       : {result['cdv']}")
+    # print(f"  TDV       : {result['tdv']}")
+    # print(f"  DV list   : {result['deduct_values']}")
+    # print(f"  Details   :")
+    # for obs in result["observations"]:
+    #     print(f"    {obs}")

@@ -10,9 +10,11 @@ normalized_classes = {
         "Transverse Crack",
         "longitudinal cracking",
         "transverse cracking",
+        "Longitudinal",
+        "Transverse",
     ],
     "pothole": ["Pothole"],
-    "edge_crack": ["edge cracking"],
+    "edge_crack": ["edge cracking", "edge crack"],
     "patching": ["patching"],
     "rutting": ["rutting"],
 }
@@ -79,7 +81,8 @@ def groupAndCalcDensity(predictions, section_area):
     # Build the grouped result with the required keys
     grouped_predictions = []
     for (distress_type, severity), count in count_map.items():
-        density = (count * 100) / section_area
+        # density = (count * 100) / (section_area)
+        density = (count * 100) / (section_area * 10.764)
         density = round(density, 4)
         grouped_predictions.append(
             {

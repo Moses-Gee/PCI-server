@@ -37,6 +37,9 @@ class SectionResponse(SectionBase):
     network_id: UUID
     area: float
     sample_unit_count: int
+    latest_pci: Optional[float] = None
+    latest_rating: Optional[str] = None
+    is_calculated: bool
     created_at: datetime
     updated_at: Optional[datetime]
 
