@@ -13,15 +13,21 @@ alembic upgrade head
 
 
 
-
-what about pothole. also it should accepts param of 
-
-```python
-
-px_per_mm
-
-```
-
-to convert to mm
-
-use typical image reading example not synthetic example
+[alligator ] severity=low  degree=3  R^2=0.9995
+[alligator ] severity=medium  degree=3  R^2=1.0000
+[alligator ] severity=high  degree=3  R^2=0.9994
+[linear    ] severity=low  degree=3  R^2=0.9998
+[linear    ] severity=medium  degree=3  R^2=0.9996
+[linear    ] severity=high  degree=3  R^2=0.9981
+[pothole   ] severity=low  degree=3  R^2=1.0000
+[pothole   ] severity=medium  degree=3  R^2=0.9999
+[pothole   ] severity=high  degree=3  R^2=0.9999
+[rutting   ] severity=low  degree=3  R^2=0.9984
+[rutting   ] severity=medium  degree=3  R^2=0.9990
+[rutting   ] severity=high  degree=3  R^2=0.9977
+[patching  ] severity=low  degree=3  R^2=0.9989
+[patching  ] severity=medium  degree=3  R^2=0.9998
+[patching  ] severity=high  degree=3  R^2=0.9948
+[edge_crack] severity=low  degree=3  R^2=0.9941
+[edge_crack] severity=medium  degree=3  R^2=0.9981
+[edge_crack] severity=high  degree=3  R^2=0.9956

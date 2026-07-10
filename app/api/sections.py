@@ -71,7 +71,7 @@ async def create_section(
     network = await db.get(Network, network_id)
     if not network:
         raise HTTPException(status_code=404, detail="Network not found")
-    # Calculate area (m²) = length (km) * width (m) * 1000
+    # Calculate area (m²)
     area = section.length * section.width
     db_section = Section(**section.model_dump(), network_id=network_id, area=area)
     db.add(db_section)
@@ -93,6 +93,7 @@ async def update_section(
         setattr(section, key, value)
     area = update.length * update.width
     setattr(section, "area", area)
+    setattr(section, "is_calculated", False)
     await db.commit()
     await db.refresh(section)
     return section

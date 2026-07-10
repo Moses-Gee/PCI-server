@@ -41,12 +41,12 @@ print(normalized_class)
 # ---------------------------------------------------------------------------
 PCI_RATING_TABLE = [
     (86, 100, "Good"),
-    (71, 85, "Satisfactory"),
-    (56, 70, "Fair"),
-    (41, 55, "Poor"),
-    (26, 40, "Very Poor"),
-    (11, 25, "Serious"),
-    (0, 10, "Failed"),
+    (71, 86, "Satisfactory"),
+    (56, 71, "Fair"),
+    (41, 56, "Poor"),
+    (26, 41, "Very Poor"),
+    (11, 26, "Serious"),
+    (0, 11, "Failed"),
 ]
 
 
@@ -61,8 +61,12 @@ def clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
 
 def pci_condition(pci: float) -> str:
     for lo, hi, label in PCI_RATING_TABLE:
-        if lo <= pci <= hi:
+        if lo <= pci < hi:
             return label
+    if pci >= 100:
+        return "Good"
+    if pci <= 0:
+        return "Failed"
     return "Unknown"
 
 

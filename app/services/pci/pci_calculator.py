@@ -27,7 +27,6 @@ from app.services.pci.pci_utilities import (
 )
 import numpy as np
 
-
 # normalized_classes = {
 #     "alligator": [
 #         "alligator crack",
@@ -212,23 +211,25 @@ class PCICalculator:
         hdv = dvs[0]
         m = min(10, 1 + (9 / 98) * (100 - hdv))
         num_to_keep = math.ceil(m)
-        print("num_to_keep", num_to_keep)
+        # print("num_to_keep", num_to_keep)
 
         # Truncate to m deducts (last one scaled by fractional part of m)
         working = dvs[:num_to_keep]
-        print("working", working)
+        # print("working", working)
         frac = m - math.floor(m)
         if frac > 0 and len(working) == num_to_keep and num_to_keep > 1:
             working[-1] = working[-1] * frac
 
         max_cdv = 0.0
         current_dvs = list(working)
+        # print("current_dvs", current_dvs)
         all_cdvs = []
         all_tdvs = []
 
         # Iterate: each pass replaces smallest dv > 2 with 2, recompute CDV
         while True:
             tdv = sum(current_dvs)
+            print("tdv", tdv)
             all_tdvs.append(tdv)
 
             q = sum(1 for v in current_dvs if v > 2)
@@ -238,6 +239,7 @@ class PCICalculator:
                 break
 
             cdv = self._corrected_deduct_value(tdv, q)
+            # print("q", q, "cdv", cdv)
             all_cdvs.append(cdv)
 
             max_cdv = max(max_cdv, cdv)
@@ -245,6 +247,7 @@ class PCICalculator:
             for i in reversed(range(len(current_dvs))):
                 if current_dvs[i] > 2:
                     current_dvs[i] = 2
+                    print("current_dvs", current_dvs)
                     break
 
         pci = clamp(100.0 - max_cdv)
@@ -347,30 +350,30 @@ if __name__ == "__main__":
             {
                 "distress_type": "pothole",
                 "severity": "low",
-                "count": 12,
-                "density": 11.1483,
-                "deduct_value": 100.0,
+                "density": 0.3604,
+                "count": 9,
+                "deduct_value": 40.83,
             },
             {
                 "distress_type": "pothole",
                 "severity": "medium",
+                "density": 0.0801,
                 "count": 2,
-                "density": 1.858,
-                "deduct_value": 100.0,
+                "deduct_value": 31.07,
             },
             {
                 "distress_type": "linear",
                 "severity": "low",
+                "density": 0.04,
                 "count": 1,
-                "density": 0.929,
-                "deduct_value": 1.81,
+                "deduct_value": 4.26,
             },
             {
                 "distress_type": "alligator",
-                "severity": "high",
+                "severity": "low",
+                "density": 0.04,
                 "count": 1,
-                "density": 0.929,
-                "deduct_value": 29.85,
+                "deduct_value": 6.89,
             },
         ]
     )
