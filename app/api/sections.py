@@ -24,7 +24,7 @@ from app.schemas.section import (
 from app.core.pci import get_pci_calculator
 from app.services.image_service import delete_images_for_ids
 from app.services.pci.pci_utilities import groupAndCalcDensity
-from app.services.reports.pdf_generator import generate_pci_report
+from app.services.sec_reports.pdf_generator import generate_pci_report
 
 # from app.services.pci.pci_utilities import groupAndCalcDensity
 
