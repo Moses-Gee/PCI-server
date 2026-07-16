@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings 
+from pydantic_settings import BaseSettings
 from typing import Optional
 
 
@@ -12,10 +12,12 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
 
+    FRONTEND_URL: str
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-        extra="ignore"
+        extra = "ignore"
 
 
 settings = Settings()

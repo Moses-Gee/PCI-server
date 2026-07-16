@@ -10,6 +10,7 @@ class DashboardStats(BaseModel):
     avg_pci: float
     critical_sections: int
     analyzed_sections: int
+    latest_section_id: Optional[UUID]
 
 class PCIDistributionItem(BaseModel):
     rating: str
@@ -22,7 +23,8 @@ class DistressDistributionItem(BaseModel):
 class RecentSampleUnit(BaseModel):
     id: UUID
     name: str
-    section: str
+    section_name: str
+    section_area: float
     date: datetime
     status: str  # Processed, Pending, Processing
 

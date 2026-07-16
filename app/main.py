@@ -11,6 +11,7 @@ from app.api import (
     pci,
     ws,
 )
+from app.core.config import settings
 
 # from app.services.pci.pci_calculator import PCICalculator
 
@@ -21,9 +22,9 @@ app = FastAPI(title="Pavement Management API", version="1.0.0")
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Adjust in production
+    allow_origins=[settings.FRONTEND_URL],  # Adjust in production
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 

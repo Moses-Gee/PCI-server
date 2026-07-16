@@ -9,9 +9,8 @@ from app.schemas.sample_unit import SampleUnitResponse
 class SectionBase(BaseModel):
     name: str
     description: Optional[str] = None
-    coordinates: List[float] = Field(..., min_items=2, max_items=2)
-    chainage_start: float
-    chainage_end: float
+    start_coordinates: List[float] = Field(..., min_items=2, max_items=2)
+    end_coordinates: List[float] = Field(..., min_items=2, max_items=2)
     width: float
     length: float
     pixel_to_mm_factor: float
@@ -24,9 +23,8 @@ class SectionCreate(SectionBase):
 class SectionUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    coordinates: Optional[List[float]] = None
-    chainage_start: Optional[float] = None
-    chainage_end: Optional[float] = None
+    start_coordinates: Optional[List[float]] = None
+    end_coordinates: Optional[List[float]] = None
     width: Optional[float] = None
     length: Optional[float] = None
     pixel_to_mm_factor: Optional[float] = None

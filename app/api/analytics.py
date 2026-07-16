@@ -23,6 +23,7 @@ from app.schemas.dashboard import (
     GeoJSONResponse,
     GeoJSONFeature,
 )
+from app.schemas.pci import PCIHistoryResponse
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -93,26 +94,28 @@ async def get_dashboard_stats(
     # Latest PCI per section
     pci_values = []
     rating_map: dict[str, str] = {}  # section_id → condition_rating
+    section_latest_pci: List[PCIHistoryResponse] = []
     for sid in section_ids:
         h = await _latest_pci_for_section(db, sid)
         if h:
             pci_values.append(h.final_pci)
             rating_map[str(sid)] = h.condition_rating
+            section_latest_pci.append(h)
 
     avg_pci = round(sum(pci_values) / len(pci_values), 2) if pci_values else 0.0
 
     critical_sections = sum(1 for p in pci_values if p < 55)
     analyzed_sections = sum(1 for p in pci_values if p > 0)
 
-    # analyzed_sections = 0
-    # if section_ids:
-    #     analyzed_sections = (
-    #         await db.execute(
-    #             select(func.count(SampleUnit.section_id.distinct())).where(
-    #                 SampleUnit.section_id.in_(section_ids)
-    #             )
-    #         )
-    #     ).scalar_one() or 0
+    if section_latest_pci:
+        section_latest_pci.sort(
+            key=lambda x: x.updated_at,  # dot notation, not ["updated_at"]
+            reverse=True
+        )
+        latest_section_id = section_latest_pci[0].section_id  # dot notation here too
+    else:
+        latest_section_id = None
+
 
     return DashboardStats(
         total_networks=total_networks,
@@ -121,6 +124,7 @@ async def get_dashboard_stats(
         avg_pci=avg_pci,
         critical_sections=critical_sections,
         analyzed_sections=analyzed_sections,
+        latest_section_id=latest_section_id,
     )
 
 
@@ -154,23 +158,53 @@ async def get_global_distress_distribution(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Global distress distribution across all user sections."""
+    """Global distress distribution across all user sections — AI detections + manual entries."""
     network_ids = await _get_user_network_ids(db, current_user.id)
     section_ids = await _get_user_section_ids(db, network_ids)
 
     if not section_ids:
         return []
 
+    counts: dict[str, int] = defaultdict(int)
+
+    # ── AI detections ─────────────────────────────────────────────────────────
     stmt = (
         select(DetectionResult.normalized_class, func.count().label("count"))
         .join(SampleUnit, DetectionResult.sample_unit_id == SampleUnit.id)
         .where(SampleUnit.section_id.in_(section_ids))
         .where(DetectionResult.normalized_class.isnot(None))
         .group_by(DetectionResult.normalized_class)
-        .order_by(desc("count"))
     )
     result = await db.execute(stmt)
-    return [DistressDistributionItem(type=row[0], count=row[1]) for row in result.all()]
+    for row in result.all():
+        counts[row[0]] += row[1]
+
+    # ── Manual entries (sample units with no detections) ──────────────────────
+    # Get all sample unit IDs that have at least one detection
+    has_detection_stmt = (
+        select(DetectionResult.sample_unit_id.distinct())
+        .join(SampleUnit, DetectionResult.sample_unit_id == SampleUnit.id)
+        .where(SampleUnit.section_id.in_(section_ids))
+    )
+    has_detection_result = await db.execute(has_detection_stmt)
+    su_ids_with_detections = set(has_detection_result.scalars().all())
+
+    # Get manual sample units — those without detections that have a distress type
+    manual_stmt = (
+        select(SampleUnit.normalized_class, func.count().label("count"))
+        .where(SampleUnit.section_id.in_(section_ids))
+        .where(SampleUnit.normalized_class.isnot(None))
+        .where(SampleUnit.id.notin_(su_ids_with_detections))
+        .group_by(SampleUnit.normalized_class)
+    )
+    manual_result = await db.execute(manual_stmt)
+    for row in manual_result.all():
+        counts[row[0]] += row[1]
+
+    return [
+        DistressDistributionItem(type=k, count=v)
+        for k, v in sorted(counts.items(), key=lambda x: -x[1])
+    ]
 
 
 @router.get("/recent-sample-units", response_model=List[RecentSampleUnit])
@@ -186,16 +220,24 @@ async def get_recent_sample_units(
         return []
 
     stmt = (
-        select(SampleUnit, Section.name.label("section_name"))
+        select(
+            SampleUnit,
+            Section.name.label("section_name"),
+            Section.area.label("section_area"),
+        )
         .join(Section, Section.id == SampleUnit.section_id)
         .where(SampleUnit.section_id.in_(section_ids))
         .order_by(desc(SampleUnit.created_at))
         .limit(limit)
     )
     rows = (await db.execute(stmt)).all()
+    # print(rows)
+    # return (await db.execute(stmt)).scalar_one()
+    print("rows is here", rows)
 
     recent = []
-    for sample, section_name in rows:
+    for sample, section_name, section_area in rows:
+        # print("rows is here", rows)
         det_count = (
             await db.execute(
                 select(func.count(DetectionResult.id)).where(
@@ -204,7 +246,7 @@ async def get_recent_sample_units(
             )
         ).scalar_one() or 0
 
-        if det_count > 0:
+        if det_count > 0 or sample.inference_status == "done":
             status = "Processed"
         elif sample.inference_status == "processing":
             status = "Processing"
@@ -215,7 +257,8 @@ async def get_recent_sample_units(
             RecentSampleUnit(
                 id=sample.id,
                 name=sample.name,
-                section=section_name,
+                section_name=section_name,
+                section_area=section_area,
                 date=sample.created_at,
                 status=status,
             )
@@ -239,14 +282,14 @@ async def get_geojson(
 
     features = []
     for sec in sections:
-        if not sec.coordinates or len(sec.coordinates) < 2:
+        if not sec.start_coordinates or len(sec.start_coordinates) < 2:
             continue
 
         h = await _latest_pci_for_section(db, sec.id)
         pci = h.final_pci if h else None
         rating = h.condition_rating if h else "Not Assessed"
 
-        lat, lng = sec.coordinates[0], sec.coordinates[1]
+        lat, lng = sec.start_coordinates[0], sec.start_coordinates[1]
         features.append(
             GeoJSONFeature(
                 geometry={"type": "Point", "coordinates": [lng, lat]},
@@ -358,7 +401,7 @@ async def get_section_distress_distribution(
         ).scalar_one_or_none()
 
         if not has_det:
-            key = su.distress_type or "Unknown"
+            key = su.normalized_class or "Unknown"
             type_counts[key] += 1
             sev = (su.severity or "low").lower()
             if sev in ("low", "medium", "high"):

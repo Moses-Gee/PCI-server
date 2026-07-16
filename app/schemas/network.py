@@ -9,7 +9,8 @@ from app.schemas.section import SectionResponse
 class NetworkBase(BaseModel):
     name: str
     description: Optional[str] = None
-    coordinates: List[float] = Field(..., min_items=2, max_items=2)
+    start_coordinates: List[float] = Field(..., min_items=2, max_items=2)
+    end_coordinates: List[float] = Field(..., min_items=2, max_items=2)
 
 
 class NetworkCreate(NetworkBase):
@@ -19,7 +20,8 @@ class NetworkCreate(NetworkBase):
 class NetworkUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    coordinates: Optional[List[float]] = None
+    start_coordinates: Optional[List[float]] = None
+    end_coordinates: Optional[List[float]] = None
 
 
 class NetworkResponse(NetworkBase):

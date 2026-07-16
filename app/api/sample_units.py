@@ -47,7 +47,7 @@ def validate(image_file: UploadFile | None, distress_type, severity):
         severity = None
 
     # Validation
-    has_file = image_file is not None and image_file.filename
+    has_file = image_file and image_file.filename
     has_manual = distress_type is not None and distress_type != ""
 
     if not has_file and not has_manual:

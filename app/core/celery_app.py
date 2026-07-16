@@ -1,5 +1,5 @@
 import sys
-
+import os
 from celery import Celery
 from celery.signals import worker_process_init
 import logging
@@ -9,11 +9,13 @@ logger = logging.getLogger(__name__)
 
 IS_CELERY_WORKER = "celery" in sys.argv[0] or any("celery" in arg for arg in sys.argv)
 
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
 
 celery_app = Celery(
     "pci_worker",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0",
+    broker=REDIS_URL,
+    backend=REDIS_URL,
     # include=["app.tasks.yolo_tasks"],
     include=["app.tasks.yolo_tasks"] if IS_CELERY_WORKER else [],
 )
@@ -26,6 +28,7 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     task_acks_late=True,           # only ack after task completes, safer on crashes
+    task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,  # don't prefetch — YOLO tasks are heavy
     worker_pool="solo" if sys.platform == "win32" else "prefork",
 )

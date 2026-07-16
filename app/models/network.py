@@ -15,7 +15,8 @@ class Network(BaseModel):
 
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    coordinates = Column(JSON, nullable=False)  # [lat, lng]
+    start_coordinates = Column(JSON, nullable=False)  # [lat, lng]
+    end_coordinates = Column(JSON, nullable=False)  # [lat, lng]
     total_sections = Column(Integer, default=0)
 
     user = relationship("User", back_populates="networks")

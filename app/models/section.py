@@ -14,9 +14,8 @@ class Section(BaseModel):
     )
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    coordinates = Column(JSON, nullable=False)  # [lat, lng]
-    chainage_start = Column(Float, nullable=True)
-    chainage_end = Column(Float, nullable=True)
+    start_coordinates = Column(JSON, nullable=False)  # [lat, lng]
+    end_coordinates = Column(JSON, nullable=False)  # [lat, lng]
     width = Column(Float, nullable=False)
     length = Column(Float, nullable=False)  # km
     pixel_to_mm_factor = Column(Float, nullable=False)
