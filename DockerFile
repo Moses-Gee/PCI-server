@@ -1,11 +1,15 @@
 FROM python:3.13-slim
 
-# Install system libraries for OpenCV and supervisor
+# Install system libraries needed for OpenCV (headless) and supervisor
 RUN apt-get update && apt-get install -y \
     libxcb1 \
     libx11-6 \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
+    libxext6 \
+    libxrender1 \
+    libsm6 \
+    libice6 \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
@@ -16,11 +20,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Copy supervisord configuration
+# Copy supervisord config (if using)
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Expose port
 EXPOSE 8000
 
-# Start supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
