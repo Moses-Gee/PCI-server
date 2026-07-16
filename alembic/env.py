@@ -93,6 +93,10 @@ from app.models import *  # noqa: F401
 # this is the Alembic Config object
 config = context.config
 
+# ✅ Override the URL with the environment variable
+import os
+config.set_main_option("sqlalchemy.url", os.environ.get("DATABASE_URL"))
+
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
