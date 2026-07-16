@@ -74,8 +74,7 @@ pyparsing==3.3.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-jose==3.5.0
-# python-magic-bin==0.4.14
-python-magic==0.4.27
+filetype==1.2.0
 python-multipart==0.0.32
 PyYAML==6.0.3
 redis==8.0.1

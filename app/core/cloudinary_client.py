@@ -1,7 +1,7 @@
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
-import magic
+import filetype
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -48,6 +48,10 @@ class CloudinaryUploadResult:
     original_filename: str
 
 
+
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}  # adjust as needed
+
 def _validate_file(file_bytes: bytes) -> str:
     """Validates size and MIME type. Returns detected mime_type."""
     size = len(file_bytes)
@@ -56,7 +60,13 @@ def _validate_file(file_bytes: bytes) -> str:
             f"File too large: {size / (1024*1024):.1f}MB — "
             f"max is {MAX_FILE_SIZE_BYTES / (1024*1024):.1f}MB"
         )
-    mime_type = magic.from_buffer(file_bytes, mime=True)
+
+    kind = filetype.guess(file_bytes)
+    if kind is None:
+        mime_type = "application/octet-stream"
+    else:
+        mime_type = kind.mime
+
     if mime_type not in ALLOWED_MIME_TYPES:
         raise ValueError(
             f"File type '{mime_type}' is not allowed. "
