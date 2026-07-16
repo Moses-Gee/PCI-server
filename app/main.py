@@ -11,11 +11,20 @@ from app.api import (
     pci,
     ws,
 )
+from contextlib import asynccontextmanager
 from app.core.config import settings
 
 # from app.services.pci.pci_calculator import PCICalculator
 
-app = FastAPI(title="Pavement Management API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load YOLO models once when the server starts
+    from app.core.models import load_models
+    load_models()
+    yield
+    # (cleanup here if needed)
+
+app = FastAPI(title="Pavement Management API", version="1.0.0", lifespan=lifespan)
 
 # PCI_CAlCULATOR = PCICalculator.get_instance()
 

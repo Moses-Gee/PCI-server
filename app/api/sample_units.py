@@ -9,6 +9,7 @@ from datetime import datetime
 from sqlalchemy.orm import selectinload
 
 from app.api import updateSectionCalcStatus
+from app.core.background_runner import run_in_background
 from app.core.cloudinary_client import upload_image_to_cloudinary
 from app.core.database import get_db
 from app.models.detection_result import DetectionResult
@@ -26,7 +27,7 @@ from app.services.image_service import (
 from app.services.pci.pci_utilities import normalizeClass
 import logging
 
-from app.tasks.yolo_tasks import run_yolo_inference
+from app.tasks.yolo_inference import run_yolo_inference
 
 logging.basicConfig(level=logging.INFO)
 
@@ -123,7 +124,8 @@ async def create_sample_unit(
     # ── Save image record ─────────────────────────────────────────────────────
     if has_file and cloudinary_result:
         await save_image_record(db, db_sample.id, cloudinary_result, is_original=True)
-        run_yolo_inference.delay(str(db_sample.id), str(model_to_use))
+        # run_yolo_inference.delay(str(db_sample.id), str(model_to_use))
+        run_in_background(run_yolo_inference, str(db_sample.id), model_to_use)
 
     # Set is calculated to false to allow re-calculation of pci values as sample unit is updated
     await updateSectionCalcStatus(db=db, section_id=db_sample.section_id)
@@ -213,7 +215,8 @@ async def update_sample_unit(
         except RuntimeError as e:
             raise HTTPException(status_code=502, detail=str(e))
         # Run inference on the new image (simulated YOLO)
-        run_yolo_inference.delay(str(sample.id), str(model_to_use))
+        # run_yolo_inference.delay(str(sample.id), str(model_to_use))
+        run_in_background(run_yolo_inference, str(sample.id), model_to_use)
 
     # 4. Commit changes
     await db.commit()

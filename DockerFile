@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y \
     libxrender1 \
     libsm6 \
     libice6 \
-    supervisor \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -20,9 +19,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Copy supervisord config (if using)
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
 EXPOSE 8000
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips="*""]
